@@ -9,5 +9,5 @@ Challengs:
 Success:
   I found out on Friday that networked aframe wasn't allowed this didn't impact me too bad as during my development i implemented my game mechanics before implementing the networking so I was able to reset to a previous build.
   
-GitHub:
+GitHub: https://github.com/jonathangjackson/multiUserInteraction 
 
