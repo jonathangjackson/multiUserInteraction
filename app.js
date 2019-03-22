@@ -20,6 +20,23 @@ socketIO.on('connection', function(socket){
     socket.on('disconnect', function(data){
         console.log(socket.id + " has disconnected");
     });
+
+    socket.on('target', function(id, pos, rot) {
+        console.log("server target");
+        socketIO.sockets.emit('generateTarget', id, pos, rot);
+    });
+
+    socket.on('remove', function(id){
+        socketIO.sockets.emit('removeTarget', id);
+    });
+
+    socket.on('timerEnd', function(){
+        socketIO.sockets.emit('startAttack');
+    });
+
+    socket.on('gameOver', function(pts, player){
+        socketIO.sockets.emit('checkPoints', pts, player);
+    });
 });
 
 server.listen(LISTEN_PORT);

@@ -4,17 +4,45 @@
         <script src="//cdn.rawgit.com/donmccurdy/aframe-physics-system/v3.3.0/dist/aframe-physics-system.min.js"></script>
         <script src="//cdn.rawgit.com/donmccurdy/aframe-extras/v5.0.1/dist/aframe-extras.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
         <script>
-        
+            
             AFRAME.registerComponent('game-control', {
                 schema:{
-                    targets: {default: 0}
+                    targets: {default: 0},
+                    player: {default: "null"},
+                    points: {default: 0},
+                    timer: {default: 60},
+                    mode: {default: false}
                 },
                 init: function(){
+                    let textEntity = document.createElement('a-entity');
+                    
+                    textEntity.setAttribute('text', {value: "Score: " + this.data.points, color: 'red', width: 10, height: 10});
+                    textEntity.setAttribute('position', {x:-3, y:8, z:-10});
+                    textEntity.setAttribute('id', 'scoreText');
+                    
+                    this.el.appendChild(textEntity);
+
+                    textEntity = document.createElement('a-entity');
+                    
+                    textEntity.setAttribute('text', {value: "Timer: " + this.data.timer + 's', color: 'green', width: 10, height: 10});
+                    textEntity.setAttribute('position', {x:3, y:8, z:-10});
+                    textEntity.setAttribute('id', 'timerText');
+                    
+                    this.el.appendChild(textEntity);
+
+                    textEntity = document.createElement('a-entity');
+
+                    textEntity.setAttribute('text', {value: "Mode: Placing", color: 'purple', width: 10, height: 10});
+                    textEntity.setAttribute('position', {x:6, y:8, z:-10});
+                    textEntity.setAttribute('id', 'modeText');
+
+                    this.el.appendChild(textEntity);
+
                     targets = 0;
                 }
             });
-
         
             AFRAME.registerComponent('delete-self', {
                 schema:{
@@ -34,60 +62,13 @@
                     Context_AF.el.parentNode.removeChild(Context_AF.el); 
                 }
             });
-
-            function keyPress(event){
-                var x = event.key;
-                //console.log(x);
-                switch(x){
-                   case ' ':
-
-                        var myVar;
-                        if(document.getElementById('shot') !== null){    
-                            document.getElementById('shot').parentNode.removeChild(document.getElementById('shot')); 
-                        }
-                        
-                        var shot = document.createElement('a-sphere');
-                        var camPos = document.getElementById("player").getAttribute('position');
-                        shot.setAttribute('id', 'shot');
-                        shot.setAttribute('position', {x: camPos.x, y: camPos.y, z: camPos.z});
-                        shot.setAttribute('mixin', 'shot-mixin');
-                        scene.appendChild(shot);
-                        //document.querySelector("#swing").setAttribute("spring", "target", "#piderman");
-                        myVar = setInterval(shoot, 500);
-                   break;
-                   case '1':
-                        //SOCKET.io
-                        var target = document.createElement('a-entity');
-                        
-                        var pos = document.getElementById("player").getAttribute('position');
-                        var rot = document.getElementById("player").getAttribute('rotation');
-                        target.setAttribute('mixin', 'target-mixin');
-                        target.setAttribute('id', document.getElementById('player').getAttribute('game-control').targets);
-                        target.setAttribute('position', pos);
-                        target.setAttribute('rotation', {x: rot.x, y: rot.y, z: rot.z});
-                        scene.appendChild(target);
-                        target.addEventListener('collide', function(e){
-                            if(e.detail.body.el.getAttribute('id') === "shot"){
-                                target.setAttribute('delete-self', {delete: "true"});
-                            }
-                        });
-
-                        document.getElementById('player').setAttribute('game-control', {targets: document.getElementById('player').getAttribute('game-control').targets + 1});
-                   break;
-                }
-            }
-            function shoot(){
-                document.querySelector("#shot").removeAttribute("spring");
-                document.querySelector("#shot").removeAttribute("spring__left");
-                document.querySelector("#shot").removeAttribute("spring__right");
-            }
         </script>
     </head>
     <body onkeydown="keyPress(event)">
         <a-scene id="scene" physics="debug: true;">
             <a-assets>
                 <a-asset-item id="target-obj" src="assets/objects/target.obj"></a-asset-item>
-                <a-mixin id="shot-mixin" dynamic-body="mass: 1" material="color: orange;" spring__left="target: #left-box" spring__right="target: #right-box"></a-mixin>
+                <a-mixin id="shot-mixin" dynamic-body="mass: 1" material="color: orange;" spring__left="target: #left-box" spring__right="target: #right-box" delete-self></a-mixin>
                 <a-mixin id="target-mixin" static-body="mass: 1" material="color: red;" obj-model="obj: #target-obj" scale="0.1 0.1 0.1" rotation="0 0 0" delete-self></a-mixin>
             </a-assets>
 
@@ -100,4 +81,140 @@
             <a-plane static-body="shape: width" height="100" width="100" position="0 -1 0" rotation="-90 0 0" ></a-plane>
         </a-scene>
     </body>
+    <script>
+        let socket = io();
+
+        function keyPress(event){
+            var x = event.key;
+            console.log(x);
+            switch(x){
+                case ' ':
+                    if(document.getElementById('player').getAttribute('game-control').mode === true){
+                        var myVar;
+                        if(document.getElementById('shot') !== null){    
+                            document.getElementById('shot').parentNode.removeChild(document.getElementById('shot')); 
+                        }
+                        
+                        var shot = document.createElement('a-sphere');
+                        var camPos = document.getElementById("player").getAttribute('position');
+                        
+                        shot.setAttribute('id', document.getElementById('player').getAttribute('game-control').player);
+                        shot.setAttribute('position', {x: camPos.x, y: camPos.y, z: camPos.z});
+                        shot.setAttribute('mixin', 'shot-mixin');
+                        scene.appendChild(shot);
+                        //document.querySelector("#swing").setAttribute("spring", "target", "#piderman");
+                        //myVar = setInterval(shoot, 500);
+                        myVar = setInterval(function(){shoot(shot, myVar)}, 100);
+                    }
+                break;
+                case '1':
+                    //SOCKET.io
+                    if(document.getElementById('player').getAttribute('game-control').mode === false){
+                        var pos = document.getElementById("player").getAttribute('position');
+                        var rot = document.getElementById("player").getAttribute('rotation');
+                        createTarget(document.getElementById('player').getAttribute('game-control').targets, pos, rot);
+                        socket.emit('target', document.getElementById('player').getAttribute('game-control').targets, pos, rot);
+
+                        document.getElementById('player').setAttribute('game-control', {targets: document.getElementById('player').getAttribute('game-control').targets + 1});
+                    }
+                break;
+                case 'ArrowUp':
+                    var pos = document.getElementById("player").getAttribute('position');
+                    document.getElementById("player").setAttribute('position', {x: pos.x, y: pos.y + 1, z: pos.z});
+                break;
+                case 'ArrowDown':
+                    var pos = document.getElementById("player").getAttribute('position');
+                    document.getElementById("player").setAttribute('position', {x: pos.x, y: pos.y - 1, z: pos.z});
+                break;                
+            }
+        }
+
+        function createTarget(id, pos, rot){
+            var target = document.createElement('a-entity');
+            target.setAttribute('mixin', 'target-mixin');
+            target.setAttribute('id', id);
+            target.setAttribute('position', pos);
+            target.setAttribute('rotation', {x: rot.x, y: rot.y, z: rot.z});
+            scene.appendChild(target);
+            target.addEventListener('collide', function(e){
+                if(e.detail.body.el.getAttribute('id') === document.getElementById('player').getAttribute('game-control').player){
+                    document.getElementById('player').setAttribute('game-control', {points: document.getElementById('player').getAttribute('game-control').points + 1});
+                    console.log("Points: " + document.getElementById('player').getAttribute('game-control').points);
+                    var textEntity = document.getElementById('scoreText');
+                    textEntity.setAttribute('text', {value: "Score: " +  document.getElementById('player').getAttribute('game-control').points, color: 'red', width: 10, height: 10});
+
+                    socket.emit('remove', id);
+                }
+            });
+        }
+
+        function shoot(obj, myVar){
+            
+            clearInterval(myVar);
+
+            document.querySelector("#" + document.getElementById('player').getAttribute('game-control').player).removeAttribute("spring");
+            document.querySelector("#" + document.getElementById('player').getAttribute('game-control').player).removeAttribute("spring__left");
+            document.querySelector("#" + document.getElementById('player').getAttribute('game-control').player).removeAttribute("spring__right");
+            myVar = setInterval(function(){deleteShot(obj, myVar)}, 2000);
+            
+        }
+
+        function deleteShot(obj, myVar){
+            clearInterval(myVar);
+            obj.setAttribute('delete-self', {delete: true});
+        }
+
+        socket.on('connect', function(){
+            document.getElementById('player').setAttribute('game-control', {player: socket.id});
+            var myVar;
+            myVar = setInterval(function(){timer(myVar)}, 1000);
+        });
+
+        function timer(myVar){
+            document.getElementById('player').setAttribute('game-control', {timer: document.getElementById('player').getAttribute('game-control').timer - 1});
+            var textEntity = document.getElementById('timerText');
+            textEntity.setAttribute('text', {value: "Timer: " +  document.getElementById('player').getAttribute('game-control').timer + 's', color: 'green', width: 10, height: 10});
+            if(document.getElementById('player').getAttribute('game-control').timer <= 0){
+                clearInterval(myVar);
+                socket.emit('timerEnd');
+            }
+        }
+        socket.on('generateTarget', function(id, pos, rot){
+            if(document.getElementById(id) === null){
+                document.getElementById('player').setAttribute('game-control', {targets: id});
+                createTarget(id, pos, rot);
+            }
+        });
+
+        socket.on('removeTarget', function(id){
+            if(document.getElementById(id) !== null){
+                document.getElementById(id).setAttribute('delete-self', {delete: "true"});
+                document.getElementById('player').setAttribute('game-control', {targets: id - 1});
+                if(id === 0){
+                    socket.emit('gameOver', document.getElementById('player').getAttribute('game-control').points, document.getElementById('player').getAttribute('game-control').player);
+                }
+            }
+        });
+
+        socket.on('startAttack', function(){
+            document.getElementById('player').getAttribute('game-control').timer = 0;
+            document.getElementById('player').setAttribute('game-control', {mode: true});
+            var textEntity = document.getElementById('modeText');
+            textEntity.setAttribute('text', {value: "Mode: Competing", color: 'purple', width: 10, height: 10});
+        });
+        
+        socket.on('checkPoints', function(pts, player){
+            if(player !== document.getElementById('player').getAttribute('game-control').player){
+                if(pts < document.getElementById('player').getAttribute('game-control').points){
+                    textEntity = document.createElement('a-entity');
+
+                    textEntity.setAttribute('text', {value: "You Win", color: 'green', width: 20, height: 20});
+                    textEntity.setAttribute('position', {x:3, y:0, z:-10});
+
+                    scene.appendChild(textEntity);
+                }
+            }
+        });
+
+    </script>
 </html>
