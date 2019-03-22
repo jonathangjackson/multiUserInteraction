@@ -23,18 +23,25 @@
                 },
 
                 shot: function() {
+                    var Context_AF = this;
                     var el = document.createElement('a-entity');
                     el.setAttribute('networked', 'template:' + this.data.bulletTemplate);       
                     el.setAttribute('position', {x: 0, y: 2, z: 0});
+                    el.setAttribute('id', 'shot');
+                    el.removeAttribute("spring");
+                    el.removeAttribute("spring__left");
+                    el.removeAttribute("spring__right");
 
                     var scene = document.querySelector('a-scene');
                     scene.appendChild(el);
+                    //myVar = setInterval(function(){Context_AF.shootTimer(el)}, 1000);
+                    
                 },
 
-                shootTimer: function(){
-                    document.querySelector("#shot").removeAttribute("spring");
-                    document.querySelector("#shot").removeAttribute("spring__left");
-                    document.querySelector("#shot").removeAttribute("spring__right");
+                shootTimer: function(el){
+                    el.removeAttribute("spring");
+                    el.removeAttribute("spring__left");
+                    el.removeAttribute("spring__right");
                 }
             });
         </script>
@@ -48,20 +55,17 @@
                     </a-entity>
                 </template>
                 <template id="bullet-template">
-                    <a-sphere class="bullet" dynamic-body="mass: 1" scale="0.1 0.1 0.1" color="#fff" spring__left="target: #left-box" spring__right="target: #right-box"></a-sphere>
-                </template>
-                <template id="blank-template">
-                    <a-entity></a-entity>
+                    <a-sphere class="bullet" id="swing" dynamic-body="mass: 1" scale="0.1 0.1 0.1" color="#fff" spring__left="target: #left-box" spring__right="target: #right-box"></a-sphere>
                 </template>
 
             </a-assets>
 
             <a-sky color="#000000"></a-sky>
             
-            <a-entity id="player" networked="template:#avatar-template" camera position="0 1.3 0" wasd-controls look-controls>
+            <a-entity id="player" networked="template:#avatar-template" game-controls camera position="0 1.3 0" wasd-controls look-controls>
                 <a-sphere class="head" color="#5985ff" visible="false"></a-sphere>
             </a-entity>
-            <a-entity id="shot" networked="template:#bullet-template" game-controls></a-entity>
+
             <a-box position="-1 2.6 -2" id="left-box" color="blue" static-body></a-box>
             <a-box position="3 2.6 -2" id="right-box" color="blue" static-body></a-box>
             <a-plane static-body="shape: width" height="100" width="100" position="0 -1 0" rotation="-90 0 0" ></a-plane>
