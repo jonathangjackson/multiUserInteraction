@@ -1,6 +1,6 @@
 <html>
     <head>
-        <script src="https://aframe.io/releases/0.7.0/aframe.min.js"></script>
+        <script src="https://aframe.io/releases/0.9.0/aframe.min.js"></script>
         <script src="//cdn.rawgit.com/donmccurdy/aframe-physics-system/v3.3.0/dist/aframe-physics-system.min.js"></script>
         <script src="//cdn.rawgit.com/donmccurdy/aframe-extras/v5.0.1/dist/aframe-extras.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
@@ -13,61 +13,54 @@
                 },
 
                 init: function () {
-                    //load in new jenga tower
-                    
                     const Context_AF = this;
-                    Context_AF.newTower();
+                    Context_AF.shot();
                 },
 
-                newTower: function(){
-                    console.log("New Tower");
-                    let scene = document.querySelector('a-scene');
-                    for(i = 0; i < 10; i++){
-                        for( j = 0; j < 3; j++){
-                            let block = document.createElement('a-entity');
-                            
-                            if(i % 2 == 0){
-                                block.setAttribute('position', {x: 0.5 + (1.5 * j), y: i * 0.9, z: 1.5});
-                                block.setAttribute('mixin', 'block90');
-                            }
-                            else{
-                                block.setAttribute('position', {x: 2, y: i * 0.9, z: 1.5 * j});
-                                block.setAttribute('mixin', 'block');
-                            }
-                            scene.appendChild(block);
-
-                        }
-                    }
-                },
-
-                resetGame: function(){
-                    console.log("reset Game");
+                shot: function() {
+                
+                    var myVar;
+                    const Context_AF = this;
                 }
             });
             function keyPress(event){
+                
                 var x = event.key;
+                console.log(x);
                 switch(x){
-                    case "ArrowUp":
-                        var pos = document.getElementById("player").getAttribute('position');
-                        document.getElementById("player").setAttribute('position', {x: pos.x, y: pos.y + 1, z: pos.z});
-                        //add restraint 
-                        break;
-                    case "ArrowDown":
-                        var pos = document.getElementById("player").getAttribute('position');
-                        document.getElementById("player").setAttribute('position', {x: pos.x, y: pos.y - 1, z: pos.z});
-                        //add restraint
-                        break;
+                   case ' ':
+                        console.log("space");
+                        var myVar;
+                        if(document.getElementById('shot') !== null)    
+                            document.getElementById('shot').parentNode.removeChild(document.getElementById('shot')); 
+                        
+                        var shot = document.createElement('a-sphere');
+                            
+                    const Context_AF = this;
+                        var camPos = document.getElementById("camera").getAttribute('position');
+                        shot.setAttribute('id', 'shot');
+                        shot.setAttribute('position', {x: camPos.x, y: camPos.y, z: camPos.z});
+                        shot.setAttribute('mixin', 'shot-mixin');
+                        scene.appendChild(shot);
+                        //document.querySelector("#swing").setAttribute("spring", "target", "#piderman");
+                        myVar = setInterval(shoot, 1000);
+                   break;
                 }
             }
+
+            function shoot(){
+                document.querySelector("#shot").removeAttribute("spring");
+                document.querySelector("#shot").removeAttribute("spring__left");
+                document.querySelector("#shot").removeAttribute("spring__right");
+            }
+
         </script>
     </head>
     <body onkeydown="keyPress(event)">
-        <a-scene id="scene" networked-scene=" app: myApp; room: room1; debug: true;" physics="debug: true; gravity:-20" game-controls>
+        <a-scene id="scene" networked-scene=" app: myApp; room: room1; debug: true;" physics="debug: true;">
             <a-assets>
                 <a-asset-item id="jenga-obj" src="assets/objects/jengaBlock.obj"></a-asset-item>
-                <a-asset-item id="jenga90-obj" src="assets/objects/jengaBlock90.obj"></a-asset-item>
-                <a-mixin id="block" dynamic-body="mass: 10" obj-model="obj: #jenga-obj;" material="color: orange;"></a-mixin>
-                <a-mixin id="block90" dynamic-body="mass:100" obj-model="obj: #jenga90-obj;" material="color: orange;"></a-mixin>
+                <a-mixin id="shot-mixin" dynamic-body="mass: 1" material="color: orange;" spring__left="target: #left-box" spring__right="target: #right-box"></a-mixin>
 
                 <template id="avatar-template">
                     <a-entity class="avatar">
@@ -77,13 +70,14 @@
             </a-assets>
 
             <a-sky color="#000000"></a-sky>
-            <a-entity id="player" networked="template:#avatar-template;attachTemplateToLocal:false;" position="20 0 0">
-                <a-entity id="rig" movement-controls kinematic-body>
-                    <a-entity id="camera" camera position="0 1.6 0" look-controls="pointerLockEnabled: true"></a-entity>
+            <a-entity id="player" networked="template:#avatar-template;attachTemplateToLocal:false;" >
+                <a-entity id="rig" >
+                    <a-entity id="camera" wasd-controls camera look-controls="pointerLockEnabled: true"></a-entity>
                 </a-entity>
             </a-entity>
-            <a-plane static-body="shape: width" height="100" width="100" rotation="-90 0 0" ></a-plane>
-            <a-entity id="tower" game-controls></a-entity>
+            <a-box position="-1 2.6 -2" id="left-box" color="blue" static-body></a-box>
+            <a-box position="3 2.6 -2" id="right-box" color="blue" static-body></a-box>
+            <a-plane static-body="shape: width" height="100" width="100" position="0 -1 0" rotation="-90 0 0" ></a-plane>
         </a-scene>
     </body>
 </html>
