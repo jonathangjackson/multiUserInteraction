@@ -1,43 +1,20 @@
 <html>
     <head>
-        <script src="https://aframe.io/releases/0.7.0/aframe.min.js"></script>
+        <script src="https://aframe.io/releases/0.9.0/aframe.min.js"></script>
         <script src="//cdn.rawgit.com/donmccurdy/aframe-physics-system/v3.3.0/dist/aframe-physics-system.min.js"></script>
         <script src="//cdn.rawgit.com/donmccurdy/aframe-extras/v5.0.1/dist/aframe-extras.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
-        <script src="easyrtc/easyrtc.js"></script>
-        <script src="https://unpkg.com/networked-aframe/dist/networked-aframe.min.js"></script>    
         <script>
-            var scoreEvent = new Event('score');
-
-            AFRAME.registerComponent('sling-shot', {
+        
+            AFRAME.registerComponent('game-control', {
+                schema:{
+                    targets: {default: 0}
+                },
                 init: function(){
-                    var Context_AF = this;
-                    var obj = this.el;
-                    var myVar;
-                    this.el.setAttribute('position', this.el.parentNode.parentNode.getAttribute('position'));
-                    myVar = setInterval(function(){Context_AF.shot(Context_AF)}, 100);
-
-                    obj.addEventListener('collide', function(e){
-                        console.log("SCORE");
-                        if(e.detail.body.el.getAttribute('id') === "target-collider"){
-                            e.detail.body.el.parentElement.children[0].setAttribute('delete-self', {delete: 'true'});
-                            e.detail.body.el.parentElement.children[1].setAttribute('delete-self', {delete: 'true'});
-                        }
-                    });
-                },
-
-                shot:function(obj){
-                    var myVar;
-                    obj.el.setAttribute('material', {color: 'blue'});
-                    obj.el.removeAttribute("spring__left");
-                    obj.el.removeAttribute("spring__right");
-                    myVar = setInterval(function(){obj.delete(obj)}, 2000);
-                },
-
-                delete:function(obj){
-                    obj.el.setAttribute('delete-self', {delete: true});
+                    targets = 0;
                 }
             });
+
         
             AFRAME.registerComponent('delete-self', {
                 schema:{
@@ -58,134 +35,69 @@
                 }
             });
 
-            AFRAME.registerComponent('game-controls',{
-                schema: {
-                    bulletTemplate: {default: '#bullet-template'},
-                    targetTemplate: {default: '#target-template'},
-                    score: {default: 0},
-                    playerName: {default: "null"}
-                },
+            function keyPress(event){
+                var x = event.key;
+                //console.log(x);
+                switch(x){
+                   case ' ':
 
-                init: function () {
-                    var obj = this.el;
-                    var that = this;
-                    let textEntity = document.createElement('a-entity');
-                    this.data.playerName = this.el.getAttribute('networked').networkId;
-                    
-                    textEntity.setAttribute('text', {value: "Score: " + this.data.score, color: 'red', width: 10, height: 10});
-                    textEntity.setAttribute('position', {x:-3, y:8, z:-10});
-                    textEntity.setAttribute('id', 'timerText');
-    
-                    this.el.appendChild(textEntity);
-
-                    document.body.onkeyup = function(e){
-                        console.log(e.keyCode);
-                        if(e.keyCode == 32){
-                            that.callShot();
+                        var myVar;
+                        if(document.getElementById('shot') !== null){    
+                            document.getElementById('shot').parentNode.removeChild(document.getElementById('shot')); 
                         }
-                        if(e.keyCode == 38){
-                            var pos = obj.getAttribute('position');
-                            obj.setAttribute('position', {x: pos.x, y: pos.y + 1, z: pos.z});
-                        }
-                        if(e.keyCode == 40){
-                            var pos = obj.getAttribute('position');
-                            obj.setAttribute('position', {x: pos.x, y: pos.y - 1, z: pos.z});
-                        }
-                        if(e.keyCode == 49){
-                            that.generateTarget();
-                        }
-                    }
-                },
+                        
+                        var shot = document.createElement('a-sphere');
+                        var camPos = document.getElementById("player").getAttribute('position');
+                        shot.setAttribute('id', 'shot');
+                        shot.setAttribute('position', {x: camPos.x, y: camPos.y, z: camPos.z});
+                        shot.setAttribute('mixin', 'shot-mixin');
+                        scene.appendChild(shot);
+                        //document.querySelector("#swing").setAttribute("spring", "target", "#piderman");
+                        myVar = setInterval(shoot, 500);
+                   break;
+                   case '1':
+                        //SOCKET.io
+                        var target = document.createElement('a-entity');
+                        
+                        var pos = document.getElementById("player").getAttribute('position');
+                        var rot = document.getElementById("player").getAttribute('rotation');
+                        target.setAttribute('mixin', 'target-mixin');
+                        target.setAttribute('id', document.getElementById('player').getAttribute('game-control').targets);
+                        target.setAttribute('position', pos);
+                        target.setAttribute('rotation', {x: rot.x, y: rot.y, z: rot.z});
+                        scene.appendChild(target);
+                        target.addEventListener('collide', function(e){
+                            if(e.detail.body.el.getAttribute('id') === "shot"){
+                                target.setAttribute('delete-self', {delete: "true"});
+                            }
+                        });
 
-                callShot: function(){
-                    this.shot();
-                },
-
-                shot: function() {
-                    var Context_AF = this;
-                    var obj = document.createElement('a-entity');
-                    var pos = document.querySelector('#player').getAttribute('position'); 
-                    obj.setAttribute('position', {x: pos.x, y: pos.y, z: pos.z});
-                    obj.setAttribute('networked', 'template:' + this.data.bulletTemplate);//adding networkId  
-                    //console.log(pos);  
-                    var scene = document.querySelector('#player');
-                    scene.appendChild(obj);   
-                    obj.setAttribute('id', this.data.playerName);
-                    
-                },
-
-                generateTarget: function(){
-                    var Context_AF = this;
-                    var obj = document.createElement('a-entity');
-                    var pos = document.querySelector('#player').getAttribute('position'); 
-                    var rot = document.querySelector('#player').getAttribute('rotation'); 
-                    obj.setAttribute('networked', 'template:' + this.data.targetTemplate);//adding networkId 
-                    obj.setAttribute('position', pos);
-                    obj.setAttribute('rotation', rot);
-                    //console.log(pos);  
-                    scene.appendChild(obj);
-                    
+                        document.getElementById('player').setAttribute('game-control', {targets: document.getElementById('player').getAttribute('game-control').targets + 1});
+                   break;
                 }
-            });
+            }
+            function shoot(){
+                document.querySelector("#shot").removeAttribute("spring");
+                document.querySelector("#shot").removeAttribute("spring__left");
+                document.querySelector("#shot").removeAttribute("spring__right");
+            }
         </script>
     </head>
-    <body>
-        <a-scene id="scene" networked-scene=" room: shooter; debug: true;" physics="debug: true; iterations: 100;"> 
+    <body onkeydown="keyPress(event)">
+        <a-scene id="scene" physics="debug: true;">
             <a-assets>
                 <a-asset-item id="target-obj" src="assets/objects/target.obj"></a-asset-item>
-                <template id="avatar-template">
-                    <a-entity class="avatar">
-                        <a-sphere class="head" scale="0.45 0.5 0.4" ></a-sphere>
-                    </a-entity>
-                </template>
-                <template id="bullet-template">
-                    <a-entity class="bullet">
-                        <a-sphere class="shot" dynamic-body="mass: 1" material="color: orange" spring__left="target:#left-box" spring__right="target:#right-box" sling-shot delete-self></a-sphere>
-                    </a-entity>
-                </template>
-
-                <template id="target-template">
-                    <a-entity class="target">
-                        <a-entity class="targetClass" id="target-entity" obj-model="obj: #target-obj;" scale="0.1 0.1 0.1" rotation="0 90 0" material="color: red" delete-self></a-entity>
-                        <a-box id="target-collider" static-body visible="false" delete-self></a-box>
-                    </a-entity>
-                </template>
-
+                <a-mixin id="shot-mixin" dynamic-body="mass: 1" material="color: orange;" spring__left="target: #left-box" spring__right="target: #right-box"></a-mixin>
+                <a-mixin id="target-mixin" static-body="mass: 1" material="color: red;" obj-model="obj: #target-obj" scale="0.1 0.1 0.1" rotation="0 0 0" delete-self></a-mixin>
             </a-assets>
 
             <a-sky color="#000000"></a-sky>
-            
-            <a-entity id="player" networked="template:#avatar-template" game-controls camera position="0 1.3 0" wasd-controls look-controls>
-                <a-sphere class="head" color="#5985ff" visible="false"></a-sphere>
-            </a-entity>
-            <!--<a-entity id="slingshot-entity" networked="template:#box-template"></a-entity>-->
-            <a-box class='cube' id='left-box' color="blue"  position="-1 2.6 -2" static-body></a-box>
-            <a-box class='cube' id='right-box' color="blue"  position="3 2.6 -2" static-body></a-box>
+            <a-entity id="player" camera position="0 1.3 0" wasd-controls look-controls game-control></a-entity>
+
+            <a-box position="-1 2.6 -2" id="left-box" color="blue" static-body></a-box>
+            <a-box position="3 2.6 -2" id="right-box" color="blue" static-body></a-box>
 
             <a-plane static-body="shape: width" height="100" width="100" position="0 -1 0" rotation="-90 0 0" ></a-plane>
         </a-scene>
-        <script>
-            // Define custom schema for syncing avatar components
-            NAF.schemas.add({
-                template: '#bullet-template',
-                components: [
-                'position',
-                'rotation',
-                {
-                    selector: '#bullet-sphere',
-                    component: 'material',
-                    property: 'color'
-                }
-                ]
-            });
-            
-            NAF.schemas.add({
-                template: '#target-template',
-                components: [
-                'position',
-                'rotation'
-                ]
-            });
-        </script>
     </body>
 </html>
