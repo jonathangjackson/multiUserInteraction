@@ -7,6 +7,8 @@
         <script src="easyrtc/easyrtc.js"></script>
         <script src="https://unpkg.com/networked-aframe/dist/networked-aframe.min.js"></script>    
         <script>
+            var scoreEvent = new Event('score');
+
             AFRAME.registerComponent('sling-shot', {
                 init: function(){
                     var Context_AF = this;
@@ -16,6 +18,7 @@
                     myVar = setInterval(function(){Context_AF.shot(Context_AF)}, 100);
 
                     obj.addEventListener('collide', function(e){
+                        console.log("SCORE");
                         if(e.detail.body.el.getAttribute('id') === "target-collider"){
                             e.detail.body.el.parentElement.children[0].setAttribute('delete-self', {delete: 'true'});
                             e.detail.body.el.parentElement.children[1].setAttribute('delete-self', {delete: 'true'});
@@ -37,33 +40,44 @@
             });
         
             AFRAME.registerComponent('delete-self', {
-                    schema:{
-                        delete: {default: false}
-                    },
-                    init: function(){
-                    },
-                    tick: function(){
-                        const Context_AF = this;
-                        var el = this.el;
-                        if(this.data.delete === true) {
-                            Context_AF.deleteMyself();
-                        }
-                    },
-                    deleteMyself: function(){
-                        const Context_AF = this;
-                        Context_AF.el.parentNode.removeChild(Context_AF.el); 
+                schema:{
+                    delete: {default: false}
+                },
+                init: function(){
+                },
+                tick: function(){
+                    const Context_AF = this;
+                    var el = this.el;
+                    if(this.data.delete === true) {
+                        Context_AF.deleteMyself();
                     }
-                });
+                },
+                deleteMyself: function(){
+                    const Context_AF = this;
+                    Context_AF.el.parentNode.removeChild(Context_AF.el); 
+                }
+            });
 
             AFRAME.registerComponent('game-controls',{
                 schema: {
                     bulletTemplate: {default: '#bullet-template'},
-                    targetTemplate: {default: '#target-template'}
+                    targetTemplate: {default: '#target-template'},
+                    score: {default: 0},
+                    playerName: {default: "null"}
                 },
 
                 init: function () {
                     var obj = this.el;
                     var that = this;
+                    let textEntity = document.createElement('a-entity');
+                    this.data.playerName = this.el.getAttribute('networked').networkId;
+                    
+                    textEntity.setAttribute('text', {value: "Score: " + this.data.score, color: 'red', width: 10, height: 10});
+                    textEntity.setAttribute('position', {x:-3, y:8, z:-10});
+                    textEntity.setAttribute('id', 'timerText');
+    
+                    this.el.appendChild(textEntity);
+
                     document.body.onkeyup = function(e){
                         console.log(e.keyCode);
                         if(e.keyCode == 32){
@@ -92,10 +106,11 @@
                     var obj = document.createElement('a-entity');
                     var pos = document.querySelector('#player').getAttribute('position'); 
                     obj.setAttribute('position', {x: pos.x, y: pos.y, z: pos.z});
-                    obj.setAttribute('networked', 'template:' + this.data.bulletTemplate);//adding networkId   
+                    obj.setAttribute('networked', 'template:' + this.data.bulletTemplate);//adding networkId  
                     //console.log(pos);  
                     var scene = document.querySelector('#player');
-                    scene.appendChild(obj);
+                    scene.appendChild(obj);   
+                    obj.setAttribute('id', this.data.playerName);
                     
                 },
 
@@ -104,7 +119,7 @@
                     var obj = document.createElement('a-entity');
                     var pos = document.querySelector('#player').getAttribute('position'); 
                     var rot = document.querySelector('#player').getAttribute('rotation'); 
-                    obj.setAttribute('networked', 'template:' + this.data.targetTemplate);//adding networkId   
+                    obj.setAttribute('networked', 'template:' + this.data.targetTemplate);//adding networkId 
                     obj.setAttribute('position', pos);
                     obj.setAttribute('rotation', rot);
                     //console.log(pos);  
@@ -125,7 +140,7 @@
                 </template>
                 <template id="bullet-template">
                     <a-entity class="bullet">
-                        <a-sphere class="shot" id="bullet-sphere" dynamic-body="mass: 1" material="color: orange" spring__left="target:#left-box" spring__right="target:#right-box" sling-shot delete-self></a-sphere>
+                        <a-sphere class="shot" dynamic-body="mass: 1" material="color: orange" spring__left="target:#left-box" spring__right="target:#right-box" sling-shot delete-self></a-sphere>
                     </a-entity>
                 </template>
 
