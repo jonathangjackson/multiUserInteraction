@@ -7,47 +7,66 @@
         <script src="easyrtc/easyrtc.js"></script>
         <script src="https://unpkg.com/networked-aframe/dist/networked-aframe.min.js"></script>    
         <script>
+            AFRAME.registerComponent('sling-shot', {
+                init: function(){
+                    var Context_AF = this;
+                    var myVar;
+                    //console.log(this.el.parentNode.parentNode.getAttribute('position'));
+                    this.el.setAttribute('position', this.el.parentNode.parentNode.getAttribute('position'));
+                    myVar = setInterval(function(){Context_AF.shot(Context_AF)}, 100);
+                },
+
+                shot:function(obj){
+                    obj.el.setAttribute('material', {color: 'blue'});
+                    obj.el.removeAttribute("spring__left");
+                    obj.el.removeAttribute("spring__right");
+                }
+            });
+
             AFRAME.registerComponent('game-controls',{
                 schema: {
                     bulletTemplate: {default: '#bullet-template'},
                 },
 
                 init: function () {
-                    const Context_AF = this;
-                    var obj = document.getElement
+                    var obj = this.el;
+                    var that = this;
                     document.body.onkeyup = function(e){
+                        console.log(e.keyCode);
                         if(e.keyCode == 32){
-                            Context_AF.shot();
+                            that.callShot();
+                        }
+                        if(e.keyCode == 38){
+                            var pos = obj.getAttribute('position');
+                            obj.setAttribute('position', {x: pos.x, y: pos.y + 1, z: pos.z});
+                        }
+                        if(e.keyCode == 40){
+                            var pos = obj.getAttribute('position');
+                            obj.setAttribute('position', {x: pos.x, y: pos.y - 1, z: pos.z});
                         }
                     }
                 },
 
-                shot: function() {
-                    var Context_AF = this;
-                    var el = document.createElement('a-entity');
-                    el.setAttribute('networked', 'template:' + this.data.bulletTemplate);//adding networkId       
-                    el.setAttribute('position', {x: 0, y: 2, z: 0});
-                    el.setAttribute('id', 'shot');
-                    el.removeAttribute("spring");
-                    el.removeAttribute("spring__left");
-                    el.removeAttribute("spring__right");
-
-                    var scene = document.querySelector('a-scene');
-                    scene.appendChild(el);
-                    //myVar = setInterval(function(){Context_AF.shootTimer(el)}, 1000);
-                    
+                callShot: function(){
+                    this.shot();
                 },
 
-                shootTimer: function(el){
-                    el.removeAttribute("spring");
-                    el.removeAttribute("spring__left");
-                    el.removeAttribute("spring__right");
+                shot: function() {
+                    var Context_AF = this;
+                    var obj = document.createElement('a-entity');
+                    var pos = document.querySelector('#player').getAttribute('position'); 
+                    //obj.setAttribute('position', {x: pos.x, y: pos.y, z: pos.z});
+                    obj.setAttribute('networked', 'template:' + this.data.bulletTemplate);//adding networkId   
+                    //console.log(pos);  
+                    var scene = document.querySelector('#player');
+                    scene.appendChild(obj);
+                    
                 }
             });
         </script>
     </head>
     <body>
-        <a-scene id="scene" networked-scene=" room: shooter; debug: true;" physics="debug: true;"> 
+        <a-scene id="scene" networked-scene=" room: shooter; debug: true;" physics="debug: false;"> 
             <a-assets>
                 <template id="avatar-template">
                     <a-entity class="avatar">
@@ -55,7 +74,15 @@
                     </a-entity>
                 </template>
                 <template id="bullet-template">
-                    <a-sphere class="bullet" id="swing" dynamic-body="mass: 1" scale="0.1 0.1 0.1" color="#fff" spring__left="target: #left-box" spring__right="target: #right-box"></a-sphere>
+                    <a-entity class="bullet">
+                        <a-sphere class="shot" id="bullet-sphere" dynamic-body="mass: 1" material="color: orange" spring__left="target:#left-box" spring__right="target:#right-box" sling-shot ></a-sphere>
+                    </a-entity>
+                </template>
+                <template id="box-template">
+                    <a-entity class="box" >
+                        <a-box class='cube' id='left-box' color="blue"  position="-1 2.6 -2" static-body></a-box>
+                        <a-box class='cube' id='right-box' color="blue"  position="3 2.6 -2" static-body></a-box>
+                    </a-entity>
                 </template>
 
             </a-assets>
@@ -66,9 +93,26 @@
                 <a-sphere class="head" color="#5985ff" visible="false"></a-sphere>
             </a-entity>
 
-            <a-box position="-1 2.6 -2" id="left-box" color="blue" static-body></a-box>
-            <a-box position="3 2.6 -2" id="right-box" color="blue" static-body></a-box>
+            <!--<a-entity id="slingshot-entity" networked="template:#box-template"></a-entity>-->
+            <a-box class='cube' id='left-box' color="blue"  position="-1 2.6 -2" static-body></a-box>
+            <a-box class='cube' id='right-box' color="blue"  position="3 2.6 -2" static-body></a-box>
+
             <a-plane static-body="shape: width" height="100" width="100" position="0 -1 0" rotation="-90 0 0" ></a-plane>
         </a-scene>
+        <script>
+            // Define custom schema for syncing avatar components
+            NAF.schemas.add({
+                template: '#bullet-template',
+                components: [
+                'position',
+                'rotation',
+                {
+                    selector: '#bullet-sphere',
+                    component: 'material',
+                    property: 'color'
+                }
+                ]
+            });
+        </script>
     </body>
 </html>
